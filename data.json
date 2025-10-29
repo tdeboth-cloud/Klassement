@@ -7,10 +7,156 @@
     "Kortrijk",
     "Eagles"
   ],
-  "games": [],
-  "pointRules": {
-    "win": 2,
-    "loss": 1
-  },
-  "updatedAt": "2025-10-29T12:02:51.937747Z"
+  "games": [
+    {
+      "id": "5666ad08-c8ec-4b88-bd49-151f69635f56",
+      "date": "2025-10-29",
+      "home": "Gullegem",
+      "away": "Gentson",
+      "homeScore": 59,
+      "awayScore": 71
+    },
+    {
+      "id": "b4e18e0f-6331-48eb-b81a-3dfbb8659173",
+      "date": "2025-10-29",
+      "home": "Gullegem",
+      "away": "Eagles",
+      "homeScore": 48,
+      "awayScore": 53
+    },
+    {
+      "id": "cf509ad6-a9c2-4372-96df-11caede196cb",
+      "date": "2025-10-29",
+      "home": "Eagles",
+      "away": "Gentson",
+      "homeScore": 77,
+      "awayScore": 43
+    },
+    {
+      "id": "1002db51-73e1-47c0-b0b3-53f64cdc9f31",
+      "date": "2025-10-29",
+      "home": "Waregem",
+      "away": "Gentson",
+      "homeScore": 62,
+      "awayScore": 54
+    },
+    {
+      "id": "bb7e31d3-5f4e-475a-a20d-ee73be337270",
+      "date": "2025-10-29",
+      "home": "Waregem",
+      "away": "Gullegem",
+      "homeScore": 84,
+      "awayScore": 64
+    },
+    {
+      "id": "7c2ff687-8e17-47f1-8e50-03fe9e732b08",
+      "date": "2025-10-29",
+      "home": "Waregem",
+      "away": "Eagles",
+      "homeScore": 63,
+      "awayScore": 52
+    },
+    {
+      "id": "c9b2822e-9bcc-41bc-9110-e97f76c522fa",
+      "date": "2025-10-29",
+      "home": "Gentson",
+      "away": "Waregem",
+      "homeScore": 58,
+      "awayScore": 87
+    },
+    {
+      "id": "48fc2a8c-23c8-4eba-886c-73057a4a7cb3",
+      "date": "2025-10-29",
+      "home": "Kortrijk",
+      "away": "Eagles",
+      "homeScore": 43,
+      "awayScore": 60
+    },
+    {
+      "id": "d783d546-4928-41f7-b5ef-0fe9d426ded6",
+      "date": "2025-10-29",
+      "home": "Waregem",
+      "away": "Kortrijk",
+      "homeScore": 60,
+      "awayScore": 48
+    },
+    {
+      "id": "12c933da-acd3-4c74-894f-6ebcfad84abf",
+      "date": "2025-10-29",
+      "home": "Gentson",
+      "away": "Kortrijk",
+      "homeScore": 47,
+      "awayScore": 63
+    },
+    {
+      "id": "66a92e27-dd10-4c19-812f-b7915f13e662",
+      "date": "2025-10-29",
+      "home": "Gullegem",
+      "away": "Kortrijk",
+      "homeScore": 33,
+      "awayScore": 91
+    },
+    {
+      "id": "f9b1ff03-3e8e-4797-912b-012dd51dcd30",
+      "date": "2025-10-29",
+      "home": "Eagles",
+      "away": "Kortrijk",
+      "homeScore": 67,
+      "awayScore": 53
+    },
+    {
+      "id": "841f2f5c-c385-429c-9fdc-112364ec1872",
+      "date": "2025-10-29",
+      "home": "Gullegem",
+      "away": "Gent Falco",
+      "homeScore": 31,
+      "awayScore": 87
+    },
+    {
+      "id": "19064e28-adb3-480a-ba85-4b45851a1b9b",
+      "date": "2025-10-29",
+      "home": "Gent Falco",
+      "away": "Gentson",
+      "homeScore": 71,
+      "awayScore": 37
+    },
+    {
+      "id": "bb0745d1-f96f-45ff-9e12-9033c1191966",
+      "date": "2025-10-29",
+      "home": "Gent Falco",
+      "away": "Waregem",
+      "homeScore": 48,
+      "awayScore": 57
+    },
+    {
+      "id": "bc426d92-9e09-45a4-9688-667f3a25f4a7",
+      "date": "2025-10-29",
+      "home": "Eagles",
+      "away": "Gent Falco",
+      "homeScore": 57,
+      "awayScore": 44
+    },
+    {
+      "id": "2205a9a1-ebe1-463e-8a5b-77cb6879b5a8",
+      "date": "2025-10-29",
+      "home": "Kortrijk",
+      "away": "Gent Falco",
+      "homeScore": 81,
+      "awayScore": 64
+    },
+    {
+      "id": "77cce3bc-4a14-45a0-aad9-f5b4998f93a8",
+      "date": "2025-09-13",
+      "home": "Gent Falco",
+      "away": "Gullegem",
+      "homeScore": 71,
+      "awayScore": 47
+    }
+  ],
+  "meta": {
+    "pointRules": {
+      "win": 2,
+      "loss": 1
+    }
+  }
 }
