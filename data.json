@@ -1,0 +1,16 @@
+{
+  "teams": [
+    "Waregem",
+    "Gent Falco",
+    "Gentson",
+    "Gullegem",
+    "Kortrijk",
+    "Eagles"
+  ],
+  "games": [],
+  "pointRules": {
+    "win": 2,
+    "loss": 1
+  },
+  "updatedAt": "2025-10-29T12:02:51.937747Z"
+}

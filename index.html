@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>🏀 Basketbal Klassement</title>
+    <meta name="description" content="Mini-website om uitslagen in te geven en automatisch een rangschikking te berekenen.\nMet gedeelde database en admin toegang.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>html,body{height:100%}body{background:#f8fafc}</style>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect, useMemo } = React;
+      const API = {
+        async getState(){ const r = await fetch("/api/state"); if(!r.ok) throw new Error("Load failed"); return r.json();},
+        async addGame(b,key){ const r=await fetch("/api/game",{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify(b)}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+        async updateGame(id,b,key){ const r=await fetch("/api/game/"+id,{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify(b)}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+        async deleteGame(id,key){ const r=await fetch("/api/game/"+id,{method:"DELETE",headers:{"x-admin-key":key}}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+        async addTeam(name,key){ const r=await fetch("/api/team",{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify({name})}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+        async renameTeam(oldName,newName,key){ const r=await fetch("/api/team/rename",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify({oldName,newName})}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+        async removeTeam(name,key){ const r=await fetch("/api/team",{method:"DELETE",headers:{"Content-Type":"application/json","x-admin-key":key},body:JSON.stringify({name})}); if(!r.ok) throw new Error(await r.text()); return r.json();},
+      };
+
+      function classNames(...a){return a.filter(Boolean).join(" ");}
+
+      function App(){
+        const [state,setState]=useState({teams:[],games:[],pointRules:{win:2,loss:1}});
+        const [loading,setLoading]=useState(true);
+        const [error,setError]=useState("");
+        const [editingGameId,setEditingGameId]=useState(null);
+        const [form,setForm]=useState({id:null,date:"",home:"",away:"",homeScore:"",awayScore:""});
+        const [adminKey,setAdminKey]=useState(localStorage.getItem("adminKey")||"");
+        const isAdmin = !!adminKey;
+
+        async function load(){ try{ setLoading(true); setState(await API.getState()); }catch(e){ setError("Kon data niet laden"); } finally{ setLoading(false); } }
+        useEffect(()=>{ load(); },[]);
+        useEffect(()=>{ if (adminKey) localStorage.setItem("adminKey",adminKey); else localStorage.removeItem("adminKey"); },[adminKey]);
+
+        const standings = useMemo(()=>{
+          const {teams,games,pointRules}=state;
+          const stats = Object.fromEntries(teams.map(t=>[t,{team:t,P:0,W:0,L:0,PF:0,PA:0,PD:0,Pts:0}]));
+          for(const g of games){
+            const h=stats[g.home], a=stats[g.away];
+            if(!h||!a) continue;
+            h.P++; a.P++;
+            h.PF+=g.homeScore; h.PA+=g.awayScore;
+            a.PF+=g.awayScore; a.PA+=g.homeScore;
+            if(g.homeScore>g.awayScore){ h.W++; a.L++; h.Pts+=pointRules.win; a.Pts+=pointRules.loss; }
+            else if(g.homeScore<g.awayScore){ a.W++; h.L++; a.Pts+=pointRules.win; h.Pts+=pointRules.loss; }
+          }
+          for(const t of state.teams){ if(stats[t]) stats[t].PD = stats[t].PF - stats[t].PA; }
+          const table = Object.values(stats).sort((x,y)=> y.Pts-x.Pts || y.PD-x.PD || y.PF-x.PF || x.team.localeCompare(y.team));
+          let rank=0,last=null; for(let i=0;i<table.length;i++){ const k=`${table[i].Pts}|${table[i].PD}|${table[i].PF}`; if(k!==last){ rank=i+1; last=k;} table[i].Rank=rank; }
+          return table;
+        },[state]);
+
+        const resetForm = ()=>{ setForm({id:null,date:"",home:"",away:"",homeScore:"",awayScore:""}); setEditingGameId(null); };
+
+        const upsertGame = async (e)=>{
+          e?.preventDefault?.();
+          const {id,date,home,away,homeScore,awayScore}=form;
+          if(!isAdmin) return alert("Je moet admin zijn om wedstrijden te beheren.");
+          if(!home||!away) return alert("Kies thuis en uit.");
+          if(home===away) return alert("Dezelfde ploeg kan niet tegen zichzelf spelen.");
+          const hs=Number(homeScore), as=Number(awayScore);
+          if(!Number.isFinite(hs)||!Number.isFinite(as)) return alert("Scores moeten cijfers zijn.");
+          if(hs===as) return alert("Gelijkspel kan niet in basket.");
+          try{
+            if(id){ await API.updateGame(id,{date,home,away,homeScore:hs,awayScore:as},adminKey); }
+            else{ await API.addGame({date,home,away,homeScore:hs,awayScore:as},adminKey); }
+            await load(); resetForm();
+          }catch(err){ alert("Opslaan mislukt: "+(err.message||"")); }
+        };
+
+        const editGame = (g)=>{ setEditingGameId(g.id); setForm({id:g.id,date:g.date,home:g.home,away:g.away,homeScore:String(g.homeScore),awayScore:String(g.awayScore)}); };
+        const deleteGame = async (id)=>{ if(!confirm("Verwijderen?")) return; try{ await API.deleteGame(id,adminKey); await load(); if(editingGameId===id) resetForm(); }catch(err){ alert("Verwijderen mislukt."); } };
+
+        const addTeam = async ()=>{
+          const name = prompt("Naam van de nieuwe ploeg?")?.trim(); if(!name) return;
+          try{ await API.addTeam(name,adminKey); await load(); }catch(err){ alert("Niet gelukt: bestaat al of geen admin."); }
+        };
+        const renameTeam = async (oldName)=>{
+          const name = prompt("Nieuwe naam voor ploeg:", oldName)?.trim(); if(!name||name===oldName) return;
+          try{ await API.renameTeam(oldName,name,adminKey); await load(); }catch(err){ alert("Niet gelukt: naam bestaat al of geen admin."); }
+        };
+        const removeTeam = async (name)=>{
+          if(!confirm(`Ploeg "${name}" verwijderen?`)) return;
+          try{ await API.removeTeam(name,adminKey); await load(); }catch(err){ alert("Niet gelukt."); }
+        };
+
+        return (
+          <div className="min-h-screen text-gray-900">
+            <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-gray-200">
+              <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                <h1 className="text-2xl font-bold">🏀 Basketbal Klassement</h1>
+                <div className="flex items-center gap-2">
+                  {isAdmin ? (
+                    <>
+                      <span className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">Admin</span>
+                      <button onClick={()=>setAdminKey("")} className="px-3 py-2 rounded-xl border shadow-sm hover:bg-gray-50">Uitloggen</button>
+                    </>
+                  ) : (
+                    <button onClick={()=>{
+                      const k = prompt("Admin wachtwoord:");
+                      if (k) setAdminKey(k);
+                    }} className="px-3 py-2 rounded-xl border shadow-sm hover:bg-gray-50">Admin login</button>
+                  )}
+                </div>
+              </div>
+            </header>
+
+            <main className="max-w-6xl mx-auto p-4 grid lg:grid-cols-3 gap-6">
+              {/* Standings */}
+              <section className="lg:col-span-2">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b">
+                    <h2 className="text-lg font-semibold">Rangschikking</h2>
+                    <p className="text-sm text-gray-500">Puntensysteem: winst {state.pointRules?.win ?? 2} – verlies {state.pointRules?.loss ?? 1}</p>
+                  </div>
+                  {loading ? (
+                    <div className="p-6 text-gray-500">Laden…</div>
+                  ) : error ? (
+                    <div className="p-6 text-rose-600">{error}</div>
+                  ) : (
+                    <div className="overflow-auto">
+                      <table className="min-w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr className="text-left">
+                            <th className="px-3 py-2 w-14">#</th>
+                            <th className="px-3 py-2">Ploeg</th>
+                            <th className="px-3 py-2 text-right">P</th>
+                            <th className="px-3 py-2 text-right">W</th>
+                            <th className="px-3 py-2 text-right">L</th>
+                            <th className="px-3 py-2 text-right">PF</th>
+                            <th className="px-3 py-2 text-right">PA</th>
+                            <th className="px-3 py-2 text-right">+/-</th>
+                            <th className="px-3 py-2 text-right">Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {standings.map(row => (
+                            <tr key={row.team} className="border-t">
+                              <td className="px-3 py-2">{row.Rank}</td>
+                              <td className="px-3 py-2 font-medium">{row.team}</td>
+                              <td className="px-3 py-2 text-right">{row.P}</td>
+                              <td className="px-3 py-2 text-right">{row.W}</td>
+                              <td className="px-3 py-2 text-right">{row.L}</td>
+                              <td className="px-3 py-2 text-right">{row.PF}</td>
+                              <td className="px-3 py-2 text-right">{row.PA}</td>
+                              <td className={row.PD>=0? "px-3 py-2 text-right text-emerald-600":"px-3 py-2 text-right text-rose-600"}>{row.PD}</td>
+                              <td className="px-3 py-2 text-right font-semibold">{row.Pts}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Add/Edit Game */}
+              <section className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b"><h2 className="text-lg font-semibold">{editingGameId ? "Wedstrijd bewerken" : "Wedstrijd toevoegen"}</h2></div>
+                  <form onSubmit={upsertGame} className="p-4 grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-sm text-gray-600">Datum</label>
+                      <input type="date" className="mt-1 w-full rounded-xl border px-3 py-2" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Thuisploeg</label>
+                      <select className="mt-1 w-full rounded-xl border px-3 py-2" value={form.home} onChange={e=>setForm(f=>({...f,home:e.target.value}))}>
+                        <option value="">— kies —</option>
+                        {state.teams.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Uitploeg</label>
+                      <select className="mt-1 w-full rounded-xl border px-3 py-2" value={form.away} onChange={e=>setForm(f=>({...f,away:e.target.value}))}>
+                        <option value="">— kies —</option>
+                        {state.teams.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Score thuis</label>
+                      <input type="number" min={0} className="mt-1 w-full rounded-xl border px-3 py-2" value={form.homeScore} onChange={e=>setForm(f=>({...f,homeScore:e.target.value}))} placeholder="bijv. 62"/>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600">Score uit</label>
+                      <input type="number" min={0} className="mt-1 w-full rounded-xl border px-3 py-2" value={form.awayScore} onChange={e=>setForm(f=>({...f,awayScore:e.target.value}))} placeholder="bijv. 58"/>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <button type="submit" disabled={!isAdmin} className={"px-4 py-2 rounded-xl text-white "+(isAdmin?"bg-emerald-600 hover:bg-emerald-700":"bg-gray-400 cursor-not-allowed")}>
+                        {editingGameId ? "Opslaan" : "Toevoegen"}
+                      </button>
+                      {editingGameId && <button type="button" onClick={resetForm} className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300">Annuleren</button>}
+                    </div>
+                    {!isAdmin && <p className="col-span-2 text-xs text-gray-500">Tip: klik rechtsboven op <strong>Admin login</strong> om uitslagen te beheren.</p>}
+                  </form>
+                </div>
+
+                {/* Teams */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Ploegen beheren</h2>
+                    <button onClick={addTeam} disabled={!isAdmin} className={"px-3 py-2 rounded-xl border shadow-sm "+(isAdmin?"hover:bg-gray-50":"opacity-50 cursor-not-allowed")}>+ Ploeg</button>
+                  </div>
+                  <ul className="divide-y">
+                    {state.teams.map(t => (
+                      <li key={t} className="px-4 py-3 flex items-center justify-between">
+                        <span className="font-medium">{t}</span>
+                        <div className="flex items-center gap-2">
+                          <button title="Naam wijzigen" onClick={()=>renameTeam(t)} disabled={!isAdmin} className={"px-3 py-2 rounded-lg "+(isAdmin?"hover:bg-gray-100":"opacity-50 cursor-not-allowed")}>✏️</button>
+                          <button title="Verwijderen" onClick={()=>removeTeam(t)} disabled={!isAdmin} className={"px-3 py-2 rounded-lg "+(isAdmin?"hover:bg-gray-100 text-rose-600":"opacity-50 cursor-not-allowed")}>🗑️</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
+              {/* Games list */}
+              <section className="lg:col-span-3">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Uitslagen</h2>
+                    <p className="text-sm text-gray-500">Klik op ✏️ om te bewerken of 🗑️ om te verwijderen.</p>
+                  </div>
+                  <div className="overflow-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr className="text-left">
+                          <th className="px-3 py-2">Datum</th>
+                          <th className="px-3 py-2">Thuis</th>
+                          <th className="px-3 py-2">Uit</th>
+                          <th className="px-3 py-2">Score</th>
+                          <th className="px-3 py-2 w-28">Acties</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {state.games.length===0 && (
+                          <tr><td className="px-3 py-6 text-center text-gray-500" colSpan={5}>Nog geen wedstrijden ingevoerd.</td></tr>
+                        )}
+                        {state.games.map(g => (
+                          <tr key={g.id} className="border-t">
+                            <td className="px-3 py-2">{g.date}</td>
+                            <td className="px-3 py-2">{g.home}</td>
+                            <td className="px-3 py-2">{g.away}</td>
+                            <td className="px-3 py-2">{g.homeScore} – {g.awayScore}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1">
+                                <button onClick={()=>editGame(g)} disabled={!isAdmin} className={"px-3 py-2 rounded-lg "+(isAdmin?"hover:bg-gray-100":"opacity-50 cursor-not-allowed")} title="Bewerken">✏️</button>
+                                <button onClick={()=>deleteGame(g.id)} disabled={!isAdmin} className={"px-3 py-2 rounded-lg "+(isAdmin?"hover:bg-gray-100 text-rose-600":"opacity-50 cursor-not-allowed")} title="Verwijderen">🗑️</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            </main>
+
+            <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-xs text-gray-500">
+              Gedeelde stand voor jullie competitie — beheer via admin login. Laat de link gerust rondgaan.
+            </footer>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App/>);
+    </script>
+  </body>
+</html>
